@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif; /* Sets a more modern font for the page */
+            background-color: #f4f4f9; /* Light grey background for less strain on the eyes */
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center; /* Centers the heading */
+            color: #333; /* Dark grey color for text */
+        }
+
+        form {
+            background: #ffffff; /* White background for the form */
+            padding: 20px;
+            border-radius: 8px; /* Rounded corners for the form */
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Subtle shadow around the form */
+            max-width: 300px;
+            margin: 20px auto; /* Adds top and bottom margin for better spacing */
+        }
+
+        label {
+            display: block; /* Makes label take the full width */
+            margin-bottom: 5px;
+            color: #666; /* Medium grey for text */
+        }
+
+        input, button {
+            display: block;
+            width: calc(100% - 16px); /* Full width minus padding */
+            padding: 8px;
+            margin-top: 0;
+            margin-bottom: 20px; /* More space between fields */
+            border: 1px solid #ccc; /* Subtle border for inputs */
+            border-radius: 4px; /* Slightly rounded corners for inputs and buttons */
+        }
+
+        button {
+            background-color: #0056b3; /* Blue background for the button */
+            color: white; /* White text for the button */
+            font-weight: bold;
+            cursor: pointer; /* Cursor changes to pointer to indicate it's clickable */
+            border: none; /* No border for a more modern look */
+        }
+
+        button:hover {
+            background-color: #004494; /* Slightly darker blue on hover for button */
+        }
+
+        .error {
+            color: red; /* Error message in red */
+            font-size: 0.9em; /* Slightly smaller font size for error messages */
+            height: 20px; /* Fixed height for alignment purposes */
+        }
+
+        p {
+            text-align: center; /* Center the paragraph text */
+        }
+
+        a {
+            color: #0056b3; /* Links are the same blue as the button */
+        }
+
+        a:hover {
+            text-decoration: underline; /* Underline on hover for links */
+        }
+    </style>
+</head>
+<body>
+    <h2>Register</h2>
+    <form id="registerForm">
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email" required><br>
+        <div id="emailError" class="error"></div>
+
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username" required><br>
+        <div id="usernameError" class="error"></div>
+
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password" required><br>
+        <div id="passwordError" class="error"></div>
+
+        <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="login.html">Login here</a></p>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            var user = {
+                email: document.getElementById('email').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+
+            // Clear previous errors
+            document.getElementById('emailError').textContent = '';
+            document.getElementById('usernameError').textContent = '';
+            document.getElementById('passwordError').textContent = '';
+
+            // Validate input and display error messages if necessary
+            if (!user.email || !user.username || !user.password) {
+                if (!user.email) document.getElementById('emailError').textContent = 'Email is required.';
+                if (!user.username) document.getElementById('usernameError').textContent = 'Username is required.';
+                if (!user.password) document.getElementById('passwordError').textContent = 'Password is required.';
+                return;
+            }
+
+            fetch('http://ec2-54-224-137-6.compute-1.amazonaws.com:8080/register', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(user)
+})
+.then(response => {
+    const contentType = response.headers.get("content-type");
+    if (!response.ok) {
+        return response.text() // Handle non-OK responses by converting them to text
+        .then(text => { throw new Error(text || 'Network response was not ok') });
+    } else if (contentType && contentType.indexOf("application/json") !== -1) {
+        return response.json(); // Parse JSON data from response
+    } else {
+        throw new Error('Received content is not valid JSON');
+    }
+})
+.then(data => {	
+    if (data.message === 'Email already exists') {
+        alert('Email already exists. Please use a different email.');
+    } else {
+        alert('Registered successfully. Redirecting to login...');
+        window.location.href = '/login.html'; // Redirect on successful registration
+    }
+})
+.catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred during registration: ' + error.message);
+	window.location.href = '/register.html';
+});
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Page</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #eaeaea;
+            margin: 0;
+            padding: 20px;
+            color: #2c3e50;
+        }
+
+        h3 {
+            color: #2980b9;
+        }
+
+        input[type="text"], button, a {
+            font-size: 14px;
+            padding: 10px;
+            margin: 8px 0;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            width: calc(100% - 22px);
+        }
+
+        button, a {
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.2s ease;
+            text-align: center;
+            display: inline-block;
+        }
+
+        button:hover, a:hover {
+            background-color: #34495e;
+            color: #ecf0f1;
+        }
+
+        #queryButton, .subscribeButton, #logoutLink {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+
+        #logoutLink {
+            background-color: #e74c3c;
+            float: right;
+        }
+
+        #userArea, #queryArea, #subscriptionArea {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        #queryResults ul, #subscriptionArea ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #queryResults li, #subscriptionArea li {
+            margin-bottom: 12px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        #queryResults img, #subscriptionArea img {
+            max-width: 120px;
+            max-height: 120px;
+            display: block;
+            margin: 10px auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="userArea">Welcome, <span id="userName">User</span>!</div>
+    <div id="queryArea">
+        <div>
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title">
+        </div>
+        <div>
+            <label for="year">Year:</label>
+            <input type="text" id="year" name="year">
+        </div>
+        <div>
+            <label for="artist">Artist:</label>
+            <input type="text" id="artist" name="artist">
+        </div>
+        <button id="queryButton">Query</button>
+        <a href="#" id="logoutLink">Logout</a>
+        <h3>Query Results</h3>
+        <div id="queryResults">
+            <ul></ul>
+        </div>
+    </div>
+    <div id="subscriptionArea">
+        <h3>Subscriptions</h3>
+        <ul></ul>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const userName = localStorage.getItem('username');
+            if (userName) {
+                document.getElementById('userName').textContent = userName;
+                fetchSubscriptions();
+            } else {
+                window.location.href = '/login.html';
+            }
+        });
+
+        document.getElementById('logoutLink').addEventListener('click', function(event) {
+            event.preventDefault();
+            localStorage.removeItem('username');
+            window.location.href = '/login.html';
+        });
+
+        document.getElementById('queryButton').addEventListener('click', function() {
+            const title = document.getElementById('title').value;
+            const year = document.getElementById('year').value;
+            const artist = document.getElementById('artist').value;
+
+            const queryParams = { title, year, artist };
+
+            fetch('http://ec2-54-224-137-6.compute-1.amazonaws.com:8080/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(queryParams)
+            })
+            .then(response => response.ok ? response.json() : response.json().then(err => Promise.reject(err)))
+            .then(data => displayMusicInformation(data))
+            .catch(error => {
+                console.error('Error:', error);
+
+                document.getElementById('queryResults').innerHTML = '<ul><li>Error occurred: ' + (error.message || 'Failed to load data because of invalid input or no valid data found') + '</li></ul>';
+            });
+        });
+
+        function displayMusicInformation(musicData) {
+            const queryResults = document.getElementById('queryResults').querySelector('ul');
+            queryResults.innerHTML = '';
+
+            if (musicData.length === 0) {
+                queryResults.innerHTML = '<li>No results found. Please adjust your query and try again.</li>';
+            } else {
+                musicData.forEach(music => {
+                    const musicInfo = document.createElement('li');
+                    musicInfo.innerHTML = `
+                        <strong>Title:</strong> ${music.title}<br>
+                        <strong>Artist:</strong> ${music.artist}<br>
+                        <strong>Year:</strong> ${music.year}<br>
+                        <img src="${music.img_url}" alt="Artist image"><br>
+                        <button class="subscribeButton" data-title="${encodeURIComponent(music.title)}">Subscribe</button>
+                    `;
+                    queryResults.appendChild(musicInfo);
+                });
+
+                document.querySelectorAll('.subscribeButton').forEach(button => {
+                    button.addEventListener('click', function() {
+                        subscribeMusic(decodeURIComponent(this.getAttribute('data-title')));
+                    });
+                });
+            }
+        }
+
+        function subscribeMusic(title) {
+    const email = localStorage.getItem('email');
+    fetch('http://ec2-54-224-137-6.compute-1.amazonaws.com:8080/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, title: title })
+    })
+    .then(response => {
+        const contentType = response.headers.get("content-type");
+        if (response.ok) {
+            alert('Subscribed successfully!');
+            fetchSubscriptions(); // Refresh the subscription area
+            return;
+        } else {
+            // Check if the response is JSON
+            if (contentType && contentType.includes('application/json')) {
+                return response.json().then(data => {
+                    if (data.message) {
+                        alert(data.message);
+                    } else {
+                        alert('Failed to subscribe, ..Already subscribed!');
+                    }
+                    throw new Error(data.message || 'Failed to subscribe..Already subscribed!');
+                });
+            } else {
+                // Handle non-JSON responses
+                return response.text().then(text => {
+                    alert(text); // Display the plain text error
+                    throw new Error(text || 'Failed to subscribe..Already subscribed!');
+                });
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+    });
+}
+
+
+        function fetchSubscriptions() {
+            const email = localStorage.getItem('email');
+            fetch(`http://ec2-54-224-137-6.compute-1.amazonaws.com:8080/subscriptions?email=${encodeURIComponent(email)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(subscriptions => {
+                const subscriptionArea = document.getElementById('subscriptionArea').querySelector('ul');
+                subscriptionArea.innerHTML = '';
+
+                if (subscriptions.length === 0) {
+                    subscriptionArea.innerHTML = '<li>No subscriptions found.</li>';
+                } else {
+                    subscriptions.forEach(sub => {
+                        const subElement = document.createElement('li');
+                        subElement.innerHTML = `
+                            <strong>Title:</strong> ${sub.title}<br>
+                            <strong>Artist:</strong> ${sub.artist}<br>
+                            <strong>Year:</strong> ${sub.year}<br>
+                            <img src="${sub.img_url}" alt="Album Cover" style="width: 100px; height: 100px;"><br>
+                        `;
+                        const removeButton = document.createElement('button');
+                        removeButton.textContent = 'Remove';
+                        removeButton.onclick = () => unsubscribeMusic(sub.title);
+                        subElement.appendChild(removeButton);
+                        subscriptionArea.appendChild(subElement);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching subscriptions:', error);
+                document.getElementById('subscriptionArea').innerHTML = `<ul><li>Error fetching subscriptions: ${error.message}</li></ul>`;
+            });
+        }
+
+        function unsubscribeMusic(title) {
+            const email = localStorage.getItem('email');
+            fetch(`http://ec2-54-224-137-6.compute-1.amazonaws.com:8080/unsubscribe?email=${email}&title=${encodeURIComponent(title)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Unsubscribed successfully!');
+                    fetchSubscriptions(); // Refresh the list after removal
+                } else {
+                    response.json().then(data => {
+                        throw new Error(data.message || 'Failed to unsubscribe ..Already subscribed!');
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            });
+        }
+    </script>
+</body>
+</html>

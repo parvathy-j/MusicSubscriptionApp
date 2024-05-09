@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+<style>
+        body {
+            font-family: Arial, sans-serif; /* Sets a more modern font for the page */
+            background-color: #f4f4f9; /* Light grey background for less strain on the eyes */
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center; /* Centers the heading */
+            color: #333; /* Dark grey color for text */
+        }
+
+        form {
+            background: #ffffff; /* White background for the form */
+            padding: 20px;
+            border-radius: 8px; /* Rounded corners for the form */
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Subtle shadow around the form */
+            max-width: 300px;
+            margin: 20px auto; /* Adds top and bottom margin for better spacing */
+        }
+
+        label {
+            display: block; /* Makes label take the full width */
+            margin-bottom: 5px;
+            color: #666; /* Medium grey for text */
+        }
+
+        input, button {
+            display: block;
+            width: calc(100% - 16px); /* Full width minus padding */
+            padding: 8px;
+            margin-top: 0;
+            margin-bottom: 20px; /* More space between fields */
+            border: 1px solid #ccc; /* Subtle border for inputs */
+            border-radius: 4px; /* Slightly rounded corners for inputs and buttons */
+        }
+
+        button {
+            background-color: #0056b3; /* Blue background for the button */
+            color: white; /* White text for the button */
+            font-weight: bold;
+            cursor: pointer; /* Cursor changes to pointer to indicate it's clickable */
+            border: none; /* No border for a more modern look */
+        }
+
+        button:hover {
+            background-color: #004494; /* Slightly darker blue on hover for button */
+        }
+
+        .error {
+            color: red; /* Error message in red */
+            font-size: 0.9em; /* Slightly smaller font size for error messages */
+            height: 20px; /* Fixed height for alignment purposes */
+        }
+
+        p {
+            text-align: center; /* Center the paragraph text */
+        }
+
+        a {
+            color: #0056b3; /* Links are the same blue as the button */
+        }
+
+        a:hover {
+            text-decoration: underline; /* Underline on hover for links */
+        }
+    </style>
+
+
+</head>
+<body>
+    <h2>Login</h2>
+    <form id="loginForm">
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email" required><br><br>
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password" required><br><br>
+        <button type="submit">Login</button>
+    </form>
+
+    <p>Don't have an account? <a href="register.html">Register here</a></p>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var email = document.getElementById('email').value;
+            var password = document.getElementById('password').value;
+
+            var user = {
+                email: email,
+                password: password
+            };
+
+            fetch('http://ec2-54-224-137-6.compute-1.amazonaws.com:8080/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(user)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    // Handle non-OK responses
+                    return response.json().then(errorData => {
+                        alert('Login failed. Email or password is invalid!.');
+                    window.location.href = '/login.html';
+                    });
+                }      
+            })
+            .then(data => {
+                if (data.message === 'User logged in successfully') {
+                    localStorage.setItem('username', data.user_name); // Storing username in local storage
+                    localStorage.setItem('email', data.email);
+                    window.location.href = '/main.html';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+    </script>
+</body>
+</html>
